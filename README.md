@@ -1,6 +1,6 @@
 # Herald College Kathmandu - Coursework and Assignments
 
-This GitHub repository contains all the assignments and coursework for students of Herald College Kathmandu, affiliated with the University of Wolverhampton. The repository is organized according to the semester and module structure, making it easy for students to navigate and access the necessary files.
+This GitHub repository contains all the assignments and coursework for students of Herald College Kathmandu, affiliated with the University of Wolverhampton. The repository is organized according to the semester and module structure, making it easy for students to navigate and access the necessary files. This repository will be updated accordingly.
 
 ## Folder Structure
 
