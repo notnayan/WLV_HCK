@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Movie Review</title>
+    <!-- Bootstrap CSS -->
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    />
+  </head>
+  <body>
+    <div class="container w-50 bg-light shadow rounded p-5">
+      <h1 class="my-4">Movie Reviews</h1>
+       <!-- Table to display reviews -->
+       <table class="table bg-success" id="reviews-table">
+        <thead class="thead-dark">
+          <tr>
+            <th id="movie-name-header"
+            onmouseenter="this.style.cursor = 'pointer';"
+            >
+            Movie Name</th>
+            <th
+              id="rating-header"
+              onmouseenter="this.style.cursor = 'pointer';"
+            >
+              Rating</span>
+            </th>
+            <th id="director-header"
+            onmouseenter="this.style.cursor = 'pointer';"
+            >
+            Director</th>
+            <th id="release-date-header"
+            onmouseenter="this.style.cursor = 'pointer';"
+            >
+            Release Date</th>
+            <th>Actions</th>
+          </tr>
+          <tr id="loading-row">
+            <td></td>
+            <td></td>
+            <td>Loading...</td>
+            <td></td>
+            <td></td>
+          </tr>
+        </thead>
+      </table>
+      <!-- Form to add a new review -->
+      <form class="my-4" id="review-form">
+        <div class="form-group">
+          <label for="movie-name">Movie Name:</label>
+          <input
+            type="text"
+            class="form-control"
+            id="movie-name"
+            name="movie-name"
+            required
+          />
+        </div>
+        <div class="form-group">
+          <label for="rating">Rating (0-5):</label>
+          <input
+            type="number"
+            class="form-control"
+            id="rating"
+            name="rating"
+            min="0"
+            max="5"
+            required
+          />
+        </div>
+        <div class="form-group">
+          <label for="director">Director Name:</label>
+          <input
+            type="text"
+            class="form-control"
+            id="director"
+            name="director"
+            required
+          />
+        </div>
+        <div class="form-group">
+          <label for="release-date">Release Date:</label>
+          <input
+            type="date"
+            class="form-control"
+            id="release-date"
+            name="release-date"
+            required
+          />
+        </div>
+        <button type="submit" class="btn btn-primary">Add Review</button>
+      </form>
+    </div>
+    <!-- Modal -->
+    <div
+      class="modal fade"
+      id="editModal"
+      tabindex="-1"
+      aria-labelledby="editModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="editModalLabel">Edit Movie Review</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <form>
+              <div class="mb-3">
+                <label for="movieName" class="form-label">Movie Name</label>
+                <input type="text" class="form-control" id="movieName" />
+              </div>
+              <div class="mb-3">
+                <label for="movieRating" class="form-label">Rating</label>
+                <input type="number" class="form-control" id="movieRating" />
+              </div>
+              <div class="mb-3">
+                <label for="movieDirector" class="form-label">Director</label>
+                <input type="text" class="form-control" id="movieDirector" />
+              </div>
+              <div class="mb-3">
+                <label for="releaseDate" class="form-label">Release Date</label>
+                <input type="date" class="form-control" id="releaseDate" />
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Close
+            </button>
+            <button type="button" class="btn btn-primary" id="save-changes-btn">
+              Save changes
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Firebase CDN -->
+    <script src="https://www.gstatic.com/firebasejs/8.7.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.7.0/firebase-database.js"></script>
+    <script>
+      // Initialize Firebase
+      const firebaseConfig = {
+  apiKey: "AIzaSyCt4PuwjZftJVJwQzjHRm3H4nazD7Ak5bk",
+  authDomain: "project-1018473818625358372.firebaseapp.com",
+  projectId: "project-1018473818625358372",
+  storageBucket: "project-1018473818625358372.appspot.com",
+  messagingSenderId: "892657045728",
+  appId: "1:892657045728:web:4349b4fcf03cf421cfc085",
+  measurementId: "G-0CX36K9DP9"
+      };
+      firebase.initializeApp(firebaseConfig);
+
+      // Get a reference to the movie reviews collection in Firestore
+      var reviewsRef = firebase.database().ref("reviews");
+      showFirestoreData();
+
+      const movieNameHeader = document.getElementById("movie-name-header");
+      const ratingHeader = document.getElementById("rating-header");
+      const directorHeader = document.getElementById("director-header");
+      const releaseDateHeader = document.getElementById("release-date-header");
+
+      movieNameHeader.addEventListener("click", sortByMovieName);
+      ratingHeader.addEventListener("click", sortByRating);
+      directorHeader.addEventListener("click", sortByDirectorName);
+      releaseDateHeader.addEventListener("click", sortByReleaseDate);
+
+      // Function to add a new review to Firestore
+      function addReview(movieName, rating, director, releaseDate) {
+        // Generate a new key for the review
+        var newReviewRef = reviewsRef.push();
+
+        // Set the data for the new review using the generated key
+        newReviewRef
+          .set({
+            movieName: movieName,
+            rating: rating,
+            director: director,
+            releaseDate: releaseDate,
+          })
+          .then(function () {
+            console.log("Review added successfully!");
+            document.getElementById("review-form").reset(); // Reset the form
+          })
+          .catch(function (error) {
+            console.error("Error adding review: ", error);
+          });
+      }
+
+      function deleteReview(reviewKey) {
+        // Remove the review from the database
+        reviewsRef
+          .child(reviewKey)
+          .remove()
+          .then(function () {
+            console.log("Review deleted successfully!");
+          })
+          .catch(function (error) {
+            console.error("Error deleting review: ", error);
+          });
+      }
+
+      function clearTable() {
+        var table = document.getElementById("reviews-table");
+        var rowCount = table.rows.length;
+        for (var i = rowCount - 1; i > 0; i--) {
+          table.deleteRow(i);
+        }
+      }
+
+      function showFirestoreData() {
+        var table = document.getElementById("reviews-table");
+        // Get the Firestore data
+        reviewsRef.on(
+          "value",
+          function (snapshot) {
+            clearTable();
+            if (snapshot.val() == null) {
+              var row = table.insertRow(-1);
+              var cell1 = row.insertCell(0);
+              var cell2 = row.insertCell(1);
+              var cell3 = row.insertCell(2);
+              var cell4 = row.insertCell(3);
+              var cell5 = row.insertCell(4);
+              cell3.innerHTML = "No reviews found";
+            }
+            
+            snapshot.forEach(function (childSnapshot) {
+              var childData = childSnapshot.val();
+              var row = table.insertRow(-1);
+              var cell1 = row.insertCell(0);
+              var cell2 = row.insertCell(1);
+              var cell3 = row.insertCell(2);
+              var cell4 = row.insertCell(3);
+              var cell5 = row.insertCell(4);
+              cell1.innerHTML = childData.movieName;
+              cell2.innerHTML = childData.rating;
+              cell3.innerHTML = childData.director;
+              cell4.innerHTML = childData.releaseDate;
+              cell5.innerHTML =
+                '<button class="btn btn-sm btn-warning" id="edit-btn">Edit</button> <button class="btn btn-sm btn-danger" id="delete-btn">Delete</button>';
+              cell5
+                .querySelector("#delete-btn")
+                .addEventListener("click", function () {
+                  // Get the key of the review to be deleted
+                  var reviewKey = childSnapshot.key;
+                  // Remove the review from the database
+                  deleteReview(reviewKey);
+                });
+              cell5
+                .querySelector("#edit-btn")
+                .addEventListener("click", function () {
+                  // Populate the form with current values
+                  document.getElementById("movieName").value =
+                    childData.movieName;
+                  document.getElementById("movieRating").value =
+                    childData.rating;
+                  document.getElementById("movieDirector").value =
+                    childData.director;
+                  document.getElementById("releaseDate").value =
+                    childData.releaseDate;
+
+                  // Show the modal dialog
+                  var editModal = new bootstrap.Modal(
+                    document.getElementById("editModal")
+                  );
+                  editModal.show();
+
+                  // Add event listener to save changes button
+                  document
+                    .getElementById("save-changes-btn")
+                    .addEventListener("click", function () {
+                      // Get the values from the form fields
+                      var movieName =
+                        document.getElementById("movieName").value;
+                      var rating = document.getElementById("movieRating").value;
+                      var director =
+                        document.getElementById("movieDirector").value;
+                      var releaseDate =
+                        document.getElementById("releaseDate").value;
+
+                      // Update the review
+                      childSnapshot.ref.update({
+                        movieName: movieName,
+                        rating: rating,
+                        director: director,
+                        releaseDate: releaseDate,
+                      });
+
+                      // Hide the modal dialog
+                      editModal.hide();
+                    });
+                });
+            });
+          },
+          function (error) {
+            console.log("Error: " + error.code);
+          }
+        );
+      }
+
+      let ascendingOrder = true;
+
+      function resetArrow(){
+        ratingHeader.innerHTML = "Rating";
+        movieNameHeader.innerHTML = "Movie Name";
+        directorHeader.innerHTML = "Director";
+        releaseDateHeader.innerHTML = "Release Date";
+      }
+
+      function sortByRating() {
+        resetArrow();
+        if (ascendingOrder) {
+          ratingHeader.innerHTML = "Rating &#8593";
+        } else {
+          ratingHeader.innerHTML = "Rating &#8595";
+        }
+
+        let table, rows, switching, i, x, y, shouldSwitch;
+        table = document.getElementById("reviews-table");
+        switching = true;
+        while (switching) {
+          switching = false;
+          rows = table.rows;
+          for (i = 1; i < rows.length - 1; i++) {
+            shouldSwitch = false;
+            x = rows[i].getElementsByTagName("TD")[1];
+            y = rows[i + 1].getElementsByTagName("TD")[1];
+            if (ascendingOrder) {
+              if (Number(x.innerHTML) > Number(y.innerHTML)) {
+                shouldSwitch = true;
+                break;
+              }
+            } else {
+              if (Number(x.innerHTML) < Number(y.innerHTML)) {
+                shouldSwitch = true;
+                break;
+              }
+            }
+          }
+          if (shouldSwitch) {
+            rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+            switching = true;
+          }
+        }
+        ascendingOrder = !ascendingOrder;
+      }
+
+      function sortByMovieName(){
+        resetArrow();
+        if (ascendingOrder) {
+          movieNameHeader.innerHTML = "Movie Name &#8593";
+        } else {
+          movieNameHeader.innerHTML = "Movie Name &#8595";
+        }
+
+        let table, rows, switching, i, x, y, shouldSwitch;
+        table = document.getElementById("reviews-table");
+        switching = true;
+        while (switching) {
+          switching = false;
+          rows = table.rows;
+          for (i = 1; i < rows.length - 1; i++) {
+            shouldSwitch = false;
+            x = rows[i].getElementsByTagName("TD")[0];
+            y = rows[i + 1].getElementsByTagName("TD")[0];
+            if (ascendingOrder) {
+              if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+                shouldSwitch = true;
+                break;
+              }
+            } else {
+              if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+                shouldSwitch = true;
+                break;
+              }
+            }
+          }
+          if (shouldSwitch) {
+            rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+            switching = true;
+          }
+        }
+        ascendingOrder = !ascendingOrder;
+      }
+      
+      function sortByDirectorName(){
+        resetArrow();
+        if (ascendingOrder) {
+          directorHeader.innerHTML = "Director &#8593";
+        } else {
+          directorHeader.innerHTML = "Director &#8595";
+        }
+
+        let table, rows, switching, i, x, y, shouldSwitch;
+        table = document.getElementById("reviews-table");
+        switching = true;
+        while (switching) {
+          switching = false;
+          rows = table.rows;
+          for (i = 1; i < rows.length - 1; i++) {
+            shouldSwitch = false;
+            x = rows[i].getElementsByTagName("TD")[2];
+            y = rows[i + 1].getElementsByTagName("TD")[2];
+            if (ascendingOrder) {
+              if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+                shouldSwitch = true;
+                break;
+              }
+            } else {
+              if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+                shouldSwitch = true;
+                break;
+              }
+            }
+          }
+          if (shouldSwitch) {
+            rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+            switching = true;
+          }
+        }
+        ascendingOrder = !ascendingOrder;
+      }
+
+      function sortByReleaseDate(){
+        resetArrow();
+        if (ascendingOrder) {
+          releaseDateHeader.innerHTML = "Release Date &#8593";
+        } else {
+          releaseDateHeader.innerHTML = "Release Date &#8595";
+        }
+
+        let table, rows, switching, i, x, y, shouldSwitch;
+        table = document.getElementById("reviews-table");
+        switching = true;
+        while (switching) {
+          switching = false;
+          rows = table.rows;
+          for (i = 1; i < rows.length - 1; i++) {
+            shouldSwitch = false;
+            x = rows[i].getElementsByTagName("TD")[3];
+            y = rows[i + 1].getElementsByTagName("TD")[3];
+            if (ascendingOrder) {
+              if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+                shouldSwitch = true;
+                break;
+              }
+            } else {
+              if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+                shouldSwitch = true;
+                break;
+              }
+            }
+          }
+          if (shouldSwitch) {
+            rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+            switching = true;
+          }
+        }
+        ascendingOrder = !ascendingOrder;
+      }
+
+
+      // When the user submits the review form
+      document
+        .getElementById("review-form")
+        .addEventListener("submit", function (event) {
+          event.preventDefault(); // Prevent the default form submit behavior
+
+          // Get the values from the input fields
+          var movieName = document.getElementById("movie-name").value;
+          var rating = document.getElementById("rating").value;
+          var director = document.getElementById("director").value;
+          var releaseDate = document.getElementById("release-date").value;
+
+          // Call the addReview function with the values
+          addReview(movieName, rating, director, releaseDate);
+          showFirestoreData();
+        });
+    </script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+  </body>
+</html>
